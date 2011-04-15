@@ -1,0 +1,58 @@
+Superalign
+==========
+
+A tool to measure read/write performance for block devices.
+It performs direct (unaffected by cache or filesystem) block transfers
+(reads or writes) linearly or "randomly" (LFSR) while collecting timing
+statistics on the transfers. You get min time/max time/avg time and standard
+deviation, so you can perform better analysis of the received data. It has
+tunable parameters such as aligning a transfer on a particular boundary,
+adding an offset to that alignment, or doing a discard on the device
+prior to transfers.
+
+The tool originally started out as an addition to Arnd Bergmann's
+excellent flashbench tool -  git://git.linaro.org/people/arnd/flashbench.git
+
+It's a bit rough, and hopefully I'll have the time to clean up the code a
+bit soon.
+
+Examples
+========
+
+Test 512-byte writes aligned to 4k.
+
+sa -s 512 -a 4096 /dev/mmcblk0p15
+
+Test 1024-byte writes straddling 8k boundary.
+
+sa -s 1024 -a 8192 -o 7680 /dev/mmcblk0p15
+
+Test 8k reads.
+
+sa -s 8192 -d /dev/mmcblk0p15
+
+Test maximum 1000 different 8k writes (as opposite to as many as can
+fit in the device)
+
+sa -s 8192 -c 1000 /dev/mmcblk0p15
+
+Repeat above test five times, blk erasing the device before each repeat.
+
+sa -s 8192 -c 1000 -r 5 -e /dev/mmcblk0p15
+
+Use LFSR ("random") instead of sequential access.
+
+sa -s 8192 -R /dev/mmcblk0p15
+
+Print verbose info.
+
+sa -v -s 8192 /dev/mmcblk0p15
+
+Print really verbose info.
+
+sa -v -v -s 8192 /dev/mmcblk0p15
+
+Contact Info
+============
+
+Andrei Warkentin (andrey.warkentin@gmail.com, andreiw@motorola.com)
