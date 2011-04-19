@@ -224,7 +224,7 @@ int main(int argc, char **argv)
 		printf("offset: %d\n", offset);
 		printf("align-on: %d\n", align);
 		printf("possibly aligned size: %d\n", asize);
-		printf("device size = %ld\n", dev.size);
+		printf("device size = %lld\n", dev.size);
 		if (random)
 			printf("LFSR-random accesses\n");
 	}

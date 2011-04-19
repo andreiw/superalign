@@ -58,7 +58,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 #endif
 
 
-long long time_read(struct device *dev, off_t pos, size_t size)
+long long time_read(struct device *dev, off64_t pos, size_t size)
 {
 	long long now = get_ns();
 	ssize_t ret;
@@ -67,7 +67,7 @@ long long time_read(struct device *dev, off_t pos, size_t size)
 		return -ENOMEM;
 
 	do {
-		ret = pread(dev->fd, dev->readbuf, size, (unsigned long long) pos % dev->size);
+		ret = pread64(dev->fd, dev->readbuf, size, (unsigned long long) pos % dev->size);
 		if (ret > 0) {
 			size -= ret;
 			pos += ret;
@@ -82,7 +82,7 @@ long long time_read(struct device *dev, off_t pos, size_t size)
 	return get_ns() - now;
 }
 
-long long time_write(struct device *dev, off_t pos, size_t size, enum writebuf which)
+long long time_write(struct device *dev, off64_t pos, size_t size, enum writebuf which)
 {
 	long long now = get_ns();
 	ssize_t ret;
@@ -93,7 +93,7 @@ long long time_write(struct device *dev, off_t pos, size_t size, enum writebuf w
 	p = dev->writebuf[which];
 
 	do {
-		ret = pwrite(dev->fd, p, size, (unsigned long long) pos % dev->size);
+		ret = pwrite64(dev->fd, p, size, (unsigned long long) pos % dev->size);
 		if (ret > 0) {
 			size -= ret;
 			pos += ret;
@@ -108,7 +108,7 @@ long long time_write(struct device *dev, off_t pos, size_t size, enum writebuf w
 	return get_ns() - now;
 }
 
-long long time_erase(struct device *dev, off_t pos, size_t size)
+long long time_erase(struct device *dev, off64_t pos, size_t size)
 {
 	long long now = get_ns();
 	ssize_t ret;
@@ -150,7 +150,7 @@ int setup_dev(struct device *dev, const char *filename)
 		return -errno;
 	}
 
-	dev->size = lseek(dev->fd, 0, SEEK_END);
+	dev->size = lseek64(dev->fd, 0, SEEK_END);
 	if (dev->size < 0) {
 		perror("seek");
 		return -errno;
