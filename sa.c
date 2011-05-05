@@ -64,12 +64,12 @@ static void on_sigint(int unused)
  * exactly once, with the exception of zero, for which we have
  * a special treatment.
  */
-static int lfsr(unsigned short v, unsigned int bits)
+static int lfsr(unsigned int v, unsigned int bits)
 {
-	unsigned short bit;
+	unsigned int bit;
 
 	if (v >= (1 << bits)) {
-		fprintf(stderr, "flashbench: internal error\n");
+		fprintf(stderr, "sa: internal error\n");
 		exit(-EINVAL);
 	}
 
@@ -83,16 +83,16 @@ static int lfsr(unsigned short v, unsigned int bits)
 	case 8: /* x^8 + x^6 + x^5 + x^4 + 1 */
 		bit = ((v >> 0) ^ (v >> 2) ^ (v >> 3) ^ (v >> 4)) & 1;
 		break;
-	case 9: /* x9 + x5 + 1 */
+	case 9: /* x^9 + x^5 + 1 */
 		bit = ((v >> 0) ^ (v >> 4)) & 1;
 		break;
-	case 10: /* x10 + x7 + 1 */
+	case 10: /* x^10 + x^7 + 1 */
 		bit = ((v >> 0) ^ (v >> 3)) & 1;
 		break;
-	case 11: /* x11 + x9 + 1 */
+	case 11: /* x^11 + x^9 + 1 */
 		bit = ((v >> 0) ^ (v >> 2)) & 1;
 		break;
-	case 12:
+	case 12: /* x^12 + x^11 + x^10 + x^4 + 1 */
 		bit = ((v >> 0) ^ (v >> 1) ^ (v >> 2) ^ (v >> 8)) & 1;
 		break;
 	case 13: /* x^13 + x^12 + x^11 + x^8 + 1 */
@@ -105,10 +105,58 @@ static int lfsr(unsigned short v, unsigned int bits)
 		bit = ((v >> 0) ^ (v >> 1) ) & 1;
 		break;
 	case 16: /* x^16 + x^14 + x^13 + x^11 + 1 */
-		bit = ((v >> 0) ^ (v >> 2) ^ (v >> 3) ^ (v >> 5) ) & 1;
+		bit = ((v >> 0) ^ (v >> 2) ^ (v >> 3) ^ (v >> 5)) & 1;
+		break;
+	case 17: /* x^17 + x^14 + 1 */
+		bit = ((v >> 0) ^ (v >> 3)) & 1;
+		break;
+	case 18: /* x^18 + x^11 + 1 */
+		bit = ((v >> 0) ^ (v >> 7)) & 1;
+		break;
+	case 19: /* x^19 + x^18 + x^17 + x^14 + 1 */
+		bit = ((v >> 0) ^ (v >> 1) ^ (v >> 2) ^ (v >> 5)) & 1;
+		break;
+	case 20: /* x^20 + x^17 + 1 */
+		bit = ((v >> 0) ^ (v >> 3)) & 1;
+		break;
+	case 21: /* x^21 + x^19 + 1 */
+		bit = ((v >> 0) ^ (v >> 2)) & 1;
+		break;
+	case 22: /* x^22 + x^21 + 1 */
+		bit = ((v >> 0) ^ (v >> 1)) & 1;
+		break;
+	case 23: /* x^23 + x^18 + 1 */
+		bit = ((v >> 0) ^ (v >> 5)) & 1;
+		break;
+	case 24: /* x^24 + x^23 + x^22 + x^17 + 1 */
+		bit = ((v >> 0) ^ (v >> 1) ^ (v >> 2) ^ (v >> 7)) & 1;
+		break;
+	case 25: /* x^25 + x^22 + 1 */
+		bit = ((v >> 0) ^ (v >> 3)) & 1;
+		break;
+	case 26: /* x^26 + x^6 + x^2 + x + 1 */
+		bit = ((v >> 0) ^ (v >> 20) ^ (v >> 24) ^ (v >> 25)) & 1;
+		break;
+	case 27: /* x^27 + x^5 + x^2 + x + 1 */
+		bit = ((v >> 0) ^ (v >> 22) ^ (v >> 25) ^ (v >> 26)) & 1;
+		break;
+	case 28: /* x^28 + x^25 + 1 */
+		bit = ((v >> 0) ^ (v >> 3)) & 1;
+		break;
+	case 29: /* x^29 + x^27 + 1 */
+		bit = ((v >> 0) ^ (v >> 2)) & 1;
+		break;
+	case 30: /* x^30 + x^6 + x^4 + x + 1 */
+		bit = ((v >> 0) ^ (v >> 24) ^ (v >> 26) ^ (v >> 29)) & 1;
+		break;
+	case 31: /* x^31 + x^28 + 1 */
+		bit = ((v >> 0) ^ (v >> 3)) & 1;
+		break;
+	case 32: /* x^32 + x^22 + x^2 + x + 1 */
+		bit = ((v >> 0) ^ (v >> 10) ^ (v >> 30) ^ (v >> 31)) & 1;
 		break;
 	default:
-		fprintf(stderr, "sa: internal error\n");
+		fprintf(stderr, "sa: internal error (unsupported order %d)\n", bits);
 		exit(-EINVAL);
 	}
 
@@ -142,7 +190,7 @@ int main(int argc, char **argv)
 	ns_t rtime = 0;
 	unsigned int repeat = 0;
 	int verbose = 0;
-	int pos = 0;
+	unsigned int pos = 0;
 	bool erase = false;
 	bool random = false;
 	bool do_read = false;
