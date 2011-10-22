@@ -68,7 +68,7 @@ static int lfsr(unsigned int v, unsigned int bits)
 {
 	unsigned int bit;
 
-	if (v >= (1 << bits)) {
+	if (v >= ((unsigned int) 1 << bits)) {
 		fprintf(stderr, "sa: internal error\n");
 		exit(-EINVAL);
 	}

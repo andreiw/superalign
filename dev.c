@@ -154,9 +154,12 @@ int setup_dev(struct device *dev, const char *filename)
 	if (dev->size < 0) {
 		perror("seek");
 		return -errno;
+	} else if (!dev->size) {
+		fprintf(stderr, "Device/file is zero bytes big?\n");
+		return -EINVAL;
 	}
 
-	err = posix_memalign(&dev->readbuf,		4096, MAX_BUFSIZE);
+	err = posix_memalign(&dev->readbuf, 4096, MAX_BUFSIZE);
 	if (err)
 		return -err;
 
