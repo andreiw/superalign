@@ -176,31 +176,31 @@ unsigned int get_order(unsigned int count)
 
 int main(int argc, char **argv)
 {
-	unsigned int index = 0;
-	unsigned int rindex = 0;
+	uintmax_t index = 0;
+	uintmax_t rindex = 0;
 	struct device dev;
-	int size = 0;
-	int asize = 0;
-	int offset = 0;
-	unsigned int count = 0;
-	unsigned int blocks = 0;
-	unsigned int order = 0;
-	int align = 0;
+	off64_t size = 0;
+	off64_t asize = 0;
+	off64_t offset = 0;
+	uintmax_t count = 0;
+	uintmax_t blocks = 0;
+	uintmax_t order = 0;
+	off64_t align = 0;
 	ns_t time = 0;
 	ns_t rtime = 0;
-	unsigned int repeat = 0;
+	uintmax_t repeat = 0;
 	int verbose = 0;
-	unsigned int pos = 0;
+	uintmax_t pos = 0;
 	bool erase = false;
 	bool random = false;
 	bool do_read = false;
-	unsigned long long max = 0;
-	unsigned long long min = -1ULL;
+	uintmax_t max = 0;
+	uintmax_t min = -1ULL;
 	long double oldm = 0;
 	long double newm = 0;
 	long double olds = 0;
 	long double news = 0;
-	unsigned long long range[2];
+	uintmax_t range[2];
 
 	while (1) {
 		int c;
@@ -209,17 +209,47 @@ int main(int argc, char **argv)
 			break;
 
 		switch (c) {
-		case 's':
-			size = atoi(optarg);
-			break;
-		case 'o':
-			offset = atoi(optarg);
-			break;
 		case 'a':
-			align = atoi(optarg);
+		case 'o':
+		case 's':
+		{
+			char type;
+			off64_t *sptr;
+
+			if (c == 's')
+				sptr = &size;
+			else if (c == 'o')
+				sptr = &offset;
+			else
+				sptr = &align;
+			sscanf(optarg, "%ju%c", sptr, &type);
+			switch (type) {
+				case 'T':
+				case 't':
+					*sptr <<= 10;
+				case 'G':
+				case 'g':
+					*sptr <<= 10;
+				case 'M':
+				case 'm':
+					*sptr <<= 10;
+				case 'K':
+				case 'k':
+					*sptr <<= 10;
+				case '\0':
+				case 'B':
+				case 'b':
+					break;
+				case 'S':
+				case 's':
+					*sptr <<= 9;
+				default:
+					fprintf(stderr, "Size modifer '%c' not one of [BKMGTS]\n", type);
+			}
 			break;
+		}
 		case 'c':
-			count = atoi(optarg);
+			sscanf(optarg, "%ju", &count);
 			break;
 		case 'v':
 			verbose++;
@@ -228,7 +258,7 @@ int main(int argc, char **argv)
 			erase = true;
 			break;
 		case 'r':
-			repeat = atoi(optarg);
+			sscanf(optarg, "%ju", &repeat);
 			break;
 		case 'R':
 			random = true;
@@ -267,12 +297,12 @@ int main(int argc, char **argv)
 	order = get_order(blocks);
 
 	if (verbose) {
-		printf("size: %d\n", size);
-		printf("count: %d, blocks: %d, order = %d\n", count, blocks, order);
-		printf("offset: %d\n", offset);
-		printf("align-on: %d\n", align);
-		printf("possibly aligned size: %d\n", asize);
-		printf("device size = %lld\n", dev.size);
+		printf("size: %ju\n", size);
+		printf("count: %ju, blocks: %ju, order = %ju\n", count, blocks, order);
+		printf("offset: %ju\n", offset);
+		printf("align-on: %ju\n", align);
+		printf("possibly aligned size: %ju\n", asize);
+		printf("device size = %ju\n", dev.size);
 		if (random)
 			printf("LFSR-random accesses\n");
 	}
@@ -319,8 +349,8 @@ int main(int argc, char **argv)
 				return -1;
 			}
 
-			if ((unsigned long long) t > max) max = t;
-			if ((unsigned long long) t < min) min = t;
+			if ((uintmax_t) t > max) max = t;
+			if ((uintmax_t) t < min) min = t;
 			if (rindex == 1 && index == 1) {
 				oldm = newm = t;
 				olds = 0;
@@ -333,7 +363,7 @@ int main(int argc, char **argv)
 
 			time +=t;
 			if (verbose > 1) {
-				printf("finished %d/%d t=", index, count);
+				printf("finished %ju/%ju t=", index, count);
 				print_ns(t);
 			}
 		}
@@ -342,9 +372,9 @@ int main(int argc, char **argv)
 			break;
 
 		if (index) {
-			printf("Repeat %d total %s time = ", rindex, do_read ? "read" : "write");
+			printf("Repeat %ju total %s time = ", rindex, do_read ? "read" : "write");
 			print_ns(time);
-			printf("Repeat %d avg %s time = ", rindex, do_read ? "read" : "write");
+			printf("Repeat %ju avg %s time = ", rindex, do_read ? "read" : "write");
 			print_ns(time / index);
 			rtime += time/index;
 		}
