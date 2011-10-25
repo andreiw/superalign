@@ -1,3 +1,23 @@
+/*
+   Superalign - a block benching tool.
+
+   Copyright (C) 2011 Andrei Warkentin <andreiw@vmvware.com>
+
+   This module is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
+
+   This module is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this module; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
 #define _GNU_SOURCE
 #define _FILE_OFFSET_BITS 64
 
@@ -108,22 +128,12 @@ long long time_write(struct device *dev, off64_t pos, size_t size, enum writebuf
 	return get_ns() - now;
 }
 
-long long time_erase(struct device *dev, off64_t pos, size_t size)
+int erase_dev(struct device *dev)
 {
-	long long now = get_ns();
-	ssize_t ret;
-	unsigned long long args[2] = { size, pos % dev->size };
-
-	if (size > MAX_BUFSIZE)
-		return -ENOMEM;
-
-	ret = ioctl(dev->fd, BLKDISCARD, &args);
-
-	if (ret) {
-		perror("time_erase");
-	}
-
-	return get_ns() - now;
+	off64_t range[2];
+	range[0] = 0;
+	range[1] = dev->size;
+	return ioctl(dev->fd, BLKDISCARD, range);
 }
 
 static void set_rtprio(void)

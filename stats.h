@@ -18,30 +18,37 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#ifndef SA_DEV_H
-#define SA_DEV_H
+#ifndef SA_STATS_H
+#define SA_STATS_H
 
+#include <inttypes.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-struct device {
-	void *readbuf;
-	void *writebuf[3];
-	int fd;
-	off64_t size;
+struct stats {
+	long double max;
+	long double min;
+	long double oldm;
+	long double newm;
+	long double olds;
+	long double news;
+	long double per_time;
+	long double avg_per_time;
+	uintmax_t gindex;
+	uintmax_t count;
+	uintmax_t repeats;
+	int verbose;
+	char *op;
 };
 
-enum writebuf {
-	WBUF_ZERO,
-	WBUF_ONE,
-	WBUF_RAND,
-};
+int stats_init(struct stats *stats,
+	       uintmax_t count,
+	       int verbose,
+	       char *op);
+int stats_do(struct stats *stats,
+	     long double ns,
+	     off64_t pos);
+void stats_print(struct stats *stats);
+int stats_fini(struct stats *stats);
 
-extern int setup_dev(struct device *dev, const char *filename, bool no_direct);
-
-long long time_write(struct device *dev, off64_t pos, size_t size, enum writebuf which);
-
-long long time_read(struct device *dev, off64_t pos, size_t size);
-
-int erase_dev(struct device *dev);
-
-#endif /* SA_DEV_H */
+#endif

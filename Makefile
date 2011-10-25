@@ -4,9 +4,10 @@ LDFLAGS := -lrt -lm
 
 all: sa
 
-sa: sa.o dev.o
+sa: sa.o dev.o stats.o
 sa.o: sa.c dev.h
 dev.o: dev.c dev.h
+stats.o: stats.c stats.h
 
 clean:
-	rm sa sa.o dev.o vm.o
+	rm sa sa.o dev.o vm.o stats.o

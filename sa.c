@@ -1,5 +1,25 @@
-#define _GNU_SOURCE
+/*
+   Superalign - a block benching tool.
+
+   Copyright (C) 2011 Andrei Warkentin <andreiw@vmvware.com>
+
+   This module is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
+
+   This module is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this module; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
 #define _FILE_OFFSET_BITS 64
+#define _GNU_SOURCE
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -7,7 +27,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <inttypes.h>
 #include <errno.h>
 #include <signal.h>
 #include <limits.h>
@@ -16,51 +35,15 @@
 #include <stdbool.h>
 #include <linux/fs.h>
 #include <sys/ioctl.h>
-#include <math.h>
 
 #include "dev.h"
-
-typedef long long ns_t;
+#include "stats.h"
 
 #ifndef BLKDISCARD
 #define BLKDISCARD _IO(0x12,119)
 #endif
 
 #define returnif(x) do { typeof(x) __x = (x); if (__x < 0) return (__x); } while (0)
-
-static void format_ns(char *out, ns_t ns)
-{
-	if (ns < 1000)
-		snprintf(out, 8, "%lldns", ns);
-	else if (ns < 1000 * 1000)
-		snprintf(out, 8, "%.3gµs", ns / 1000.0);
-	else if (ns < 1000 * 1000 * 1000)
-		snprintf(out, 8, "%.3gms", ns / 1000000.0);
-	else {
-		snprintf(out, 8, "%.4gs", ns / 1000000000.0);
-	}
-}
-
-static inline void print_ns(ns_t ns)
-{
-	char buf[8];
-	format_ns(buf, ns);
-	puts(buf);
-}
-
-static inline void print_f_ns(long double nano, char *postfix)
-{
-	if (nano < 1000)
-		printf("%.3Lgn", nano);
-	else if (nano < 1000 * 1000)
-		printf("%.3Lgµ", nano / 1000.0);
-	else if (nano < 1000 * 1000 * 1000)
-		printf("%.3Lgm", nano / 1000000.0);
-	else {
-		printf("%.4Lg", nano / 1000000000.0);
-	}
-	printf("%s", postfix);
-}
 
 bool need_exit = false;
 
@@ -192,8 +175,8 @@ int main(int argc, char **argv)
 {
 	uintmax_t index = 0;
 	uintmax_t rindex = 0;
-	uintmax_t gindex = 0;
 	struct device dev;
+	struct stats stats;
 	off64_t size = 0;
 	off64_t asize = 0;
 	off64_t offset = 0;
@@ -201,8 +184,6 @@ int main(int argc, char **argv)
 	uintmax_t blocks = 0;
 	uintmax_t order = 0;
 	off64_t align = 0;
-	ns_t time = 0;
-	ns_t rtime = 0;
 	uintmax_t repeat = 0;
 	int verbose = 0;
 	uintmax_t pos = 0;
@@ -210,13 +191,6 @@ int main(int argc, char **argv)
 	bool random = false;
 	bool do_read = false;
 	bool no_direct = false;
-	uintmax_t max = 0;
-	uintmax_t min = -1ULL;
-	long double oldm = 0;
-	long double newm = 0;
-	long double olds = 0;
-	long double news = 0;
-	uintmax_t range[2];
 
 	while (1) {
 		int c;
@@ -312,49 +286,41 @@ int main(int argc, char **argv)
 	blocks = (dev.size - offset) / asize;
 	if (!count)
 		count = blocks;
-
 	order = get_order(blocks);
 
+	returnif(stats_init(&stats, count, verbose, do_read ? "read" : "write"));
 	if (verbose) {
-		printf("size: %ju\n", size);
-		printf("count: %ju, blocks: %ju, order = %ju\n", count, blocks, order);
-		printf("offset: %ju\n", offset);
-		printf("align-on: %ju\n", align);
-		printf("aligned size: %ju\n", asize);
-		printf("device size = %ju\n", dev.size);
+		printf("Test configuration: %s\n", do_read ? "reads" : "writes");
+		printf("\tsize: %ju\n", size);
+		printf("\tcount: %ju, blocks: %ju, order = %ju\n", count, blocks, order);
+		printf("\toffset: %ju\n", offset);
+		printf("\talign-on: %ju\n", align);
+		printf("\taligned size: %ju\n", asize);
+		printf("\tdevice size = %ju\n", dev.size);
 		if (random)
-			printf("LFSR-random accesses\n");
+			printf("\tLFSR-random accesses\n");
 		if (no_direct)
-			printf("Using non-O_DIRECT I/O\n");
+			printf("\tnon-O_DIRECT I/O\n");
 	}
 
 	if (!repeat)
 		repeat = 1;
 
-	rindex = 0;
-	while (rindex < repeat) {
-		if (erase) {
-			if (verbose)
-				printf("start erase\n");
-			range[0] = 0;
-			range[1] = dev.size;
-			if(ioctl(dev.fd, BLKDISCARD, range))
-				perror("discard");
-			if (verbose)
-				printf("finish erase\n");
-		}
-		index = 0;
-		time = 0;
-		while (index < count) {
-			ns_t t;
-			index++;
-			gindex++;
-
-			if (random) {
-				pos = lfsr(pos, order);
-			} else {
-				pos = index;
+	for (rindex = 0; rindex < repeat; rindex++) {
+		if (erase)
+			if (erase_dev(&dev)) {
+				perror("erase");
+				goto out;
 			}
+
+		for (index = 0; index < count; index++) {
+			long double t;
+
+			if (random)
+				pos = lfsr(pos, order);
+			else
+				pos = index;
+
 			if (need_exit)
 				break;
 
@@ -362,61 +328,24 @@ int main(int argc, char **argv)
 				t = time_read(&dev, offset + pos * asize, size);
 			else
 				t = time_write(&dev, offset + pos * asize, size, WBUF_RAND);
-			if (t < 0) {
-				if (do_read)
-					printf("read error\n");
-				else
-					printf("write error\n");
-				return -1;
+			if (t == 0) {
+
+				/* Failed in time_read or time_write. */
+				goto out;
 			}
 
-			if ((uintmax_t) t > max) max = t;
-			if ((uintmax_t) t < min) min = t;
-			if (gindex == 0) {
-				oldm = newm = t;
-				olds = 0;
-			} else {
-				newm = oldm + ((long double) t - oldm) / gindex;
-				news = olds + ((long double) t - oldm) * ((long double) t - newm);
-				oldm = newm;
-				olds = news;
-			}
-
-			time +=t;
-			if (verbose > 1) {
-				printf("finished %ju/%ju t=", index, count);
-				print_ns(t);
+			if (stats_do(&stats, t,  offset + pos * asize)) {
+				fprintf(stderr, "Error processing stats\n");
+				goto out;
 			}
 		}
 
 		if (need_exit)
 			break;
-
-		if (index) {
-			printf("Repeat %ju total %s time = ", rindex, do_read ? "read" : "write");
-			print_ns(time);
-			printf("Repeat %ju avg %s time = ", rindex, do_read ? "read" : "write");
-			print_ns(time / index);
-			rtime += time/index;
-		}
-		rindex++;
 	}
 
-	if (rindex) {
-		printf("Average of repeat averages: ");
-		print_ns(rtime / rindex);
-	}
-
-	if (gindex) {
-		printf("Global stats:\n");
-		printf("Min %s = ", do_read ? "read" : "write");
-		print_ns(min);
-		printf("Max %s = ", do_read ? "read" : "write");
-		print_ns(max);
-		printf("Mean: ");
-		print_f_ns(newm, "s\n");
-		printf("Variance: %LG ns^2\n", news / (gindex - 1));
-		printf("StdDev: %LG ns\n", sqrtl(news / (gindex - 1)));
-	}
+out:
+	stats_print(&stats);
+	stats_fini(&stats);
 	return 0;
 }

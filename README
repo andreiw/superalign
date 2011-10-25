@@ -21,15 +21,15 @@ Examples
 
 Test 512-byte writes aligned to 4k.
 
-sa -s 512 -a 4096 /dev/mmcblk0p15
+sa -s 1s -a 4096 /dev/mmcblk0p15
 
 Test 1024-byte writes straddling 8k boundary.
 
-sa -s 1024 -a 8192 -o 7680 /dev/mmcblk0p15
+sa -s 1k -a 8192 -o 7680 /dev/mmcblk0p15
 
 Test 8k reads.
 
-sa -s 8192 -d /dev/mmcblk0p15
+sa -s 8k -d /dev/mmcblk0p15
 
 Test maximum 1000 different 8k writes (as opposite to as many as can
 fit in the device)
