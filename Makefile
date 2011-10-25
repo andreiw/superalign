@@ -10,4 +10,4 @@ dev.o: dev.c dev.h
 stats.o: stats.c stats.h
 
 clean:
-	rm sa sa.o dev.o vm.o stats.o
+	rm -f sa sa.o dev.o stats.o
