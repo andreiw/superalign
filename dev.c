@@ -138,13 +138,19 @@ static void set_rtprio(void)
 }
 
 
-int setup_dev(struct device *dev, const char *filename)
+int setup_dev(struct device *dev,
+	      const char *filename,
+	      bool no_direct)
 {
 	int err;
 	void *p;
+	int flags = O_RDWR | O_SYNC | O_NOATIME;
+	if (!no_direct)
+		flags= O_DIRECT;
+
 	set_rtprio();
 
-	dev->fd = open(filename, O_RDWR | O_DIRECT | O_SYNC | O_NOATIME);
+	dev->fd = open(filename, flags);
 	if (dev->fd < 0) {
 		perror(filename);
 		return -errno;

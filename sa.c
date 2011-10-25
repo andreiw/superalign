@@ -48,6 +48,20 @@ static inline void print_ns(ns_t ns)
 	puts(buf);
 }
 
+static inline void print_f_ns(long double nano, char *postfix)
+{
+	if (nano < 1000)
+		printf("%.3Lgn", nano);
+	else if (nano < 1000 * 1000)
+		printf("%.3Lgµ", nano / 1000.0);
+	else if (nano < 1000 * 1000 * 1000)
+		printf("%.3Lgm", nano / 1000000.0);
+	else {
+		printf("%.4Lg", nano / 1000000000.0);
+	}
+	printf("%s", postfix);
+}
+
 bool need_exit = false;
 
 static void on_sigint(int unused)
@@ -178,6 +192,7 @@ int main(int argc, char **argv)
 {
 	uintmax_t index = 0;
 	uintmax_t rindex = 0;
+	uintmax_t gindex = 0;
 	struct device dev;
 	off64_t size = 0;
 	off64_t asize = 0;
@@ -194,6 +209,7 @@ int main(int argc, char **argv)
 	bool erase = false;
 	bool random = false;
 	bool do_read = false;
+	bool no_direct = false;
 	uintmax_t max = 0;
 	uintmax_t min = -1ULL;
 	long double oldm = 0;
@@ -204,7 +220,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		int c;
-		c = getopt(argc, argv, "s:o:a:c:r:veRd");
+		c = getopt(argc, argv, "s:o:a:c:r:veRdf");
 		if (c == -1)
 			break;
 
@@ -266,16 +282,19 @@ int main(int argc, char **argv)
 		case 'd':
 			do_read = true;
 			break;
+		case 'f':
+			no_direct = true;
+			break;
 		};
 	}
 
 	if (!size || optind != (argc - 1)) {
-		printf("%s -s size [-d] [-o offset] [-a align] [-c count] [-r repeats] dev\n",
+		printf("%s -s size [-f] [-n] [-o offset] [-a align] [-c count] [-r repeats] dev\n",
 			argv[0]);
 		return -1;
 	};
 
-	returnif(setup_dev(&dev, argv[optind]));
+	returnif(setup_dev(&dev, argv[optind], no_direct));
 	signal(SIGINT, &on_sigint);
 	siginterrupt(SIGINT, true);
 
@@ -301,10 +320,12 @@ int main(int argc, char **argv)
 		printf("count: %ju, blocks: %ju, order = %ju\n", count, blocks, order);
 		printf("offset: %ju\n", offset);
 		printf("align-on: %ju\n", align);
-		printf("possibly aligned size: %ju\n", asize);
+		printf("aligned size: %ju\n", asize);
 		printf("device size = %ju\n", dev.size);
 		if (random)
 			printf("LFSR-random accesses\n");
+		if (no_direct)
+			printf("Using non-O_DIRECT I/O\n");
 	}
 
 	if (!repeat)
@@ -322,12 +343,12 @@ int main(int argc, char **argv)
 			if (verbose)
 				printf("finish erase\n");
 		}
-		rindex++;
 		index = 0;
 		time = 0;
 		while (index < count) {
 			ns_t t;
 			index++;
+			gindex++;
 
 			if (random) {
 				pos = lfsr(pos, order);
@@ -351,11 +372,11 @@ int main(int argc, char **argv)
 
 			if ((uintmax_t) t > max) max = t;
 			if ((uintmax_t) t < min) min = t;
-			if (rindex == 1 && index == 1) {
+			if (gindex == 0) {
 				oldm = newm = t;
 				olds = 0;
 			} else {
-				newm = oldm + ((long double) t - oldm) / (((rindex - 1) * count + index));
+				newm = oldm + ((long double) t - oldm) / gindex;
 				news = olds + ((long double) t - oldm) * ((long double) t - newm);
 				oldm = newm;
 				olds = news;
@@ -378,19 +399,24 @@ int main(int argc, char **argv)
 			print_ns(time / index);
 			rtime += time/index;
 		}
+		rindex++;
 	}
 
 	if (rindex) {
 		printf("Average of repeat averages: ");
 		print_ns(rtime / rindex);
+	}
+
+	if (gindex) {
+		printf("Global stats:\n");
 		printf("Min %s = ", do_read ? "read" : "write");
 		print_ns(min);
 		printf("Max %s = ", do_read ? "read" : "write");
 		print_ns(max);
-		printf("Mean: %LG\n", newm);
-		printf("Variance: %LG\n", news / (count * repeat - 1));
-		printf("StdDev: %G\n", sqrt(news / (count * repeat - 1)));
-
+		printf("Mean: ");
+		print_f_ns(newm, "s\n");
+		printf("Variance: %LG ns^2\n", news / (gindex - 1));
+		printf("StdDev: %LG ns\n", sqrtl(news / (gindex - 1)));
 	}
 	return 0;
 }
