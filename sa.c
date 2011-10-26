@@ -288,7 +288,7 @@ int main(int argc, char **argv)
 		count = blocks;
 	order = get_order(blocks);
 
-	returnif(stats_init(&stats, count, verbose, do_read ? "read" : "write"));
+	returnif(stats_init(&stats, count, size, verbose, do_read ? "read" : "write"));
 	if (verbose) {
 		printf("Test configuration: %s\n", do_read ? "reads" : "writes");
 		printf("\tsize: %ju\n", size);

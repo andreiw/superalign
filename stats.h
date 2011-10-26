@@ -38,11 +38,13 @@ struct stats {
 	uintmax_t count;
 	uintmax_t repeats;
 	int verbose;
+	off64_t size;
 	char *op;
 };
 
 int stats_init(struct stats *stats,
 	       uintmax_t count,
+	       off64_t size,
 	       int verbose,
 	       char *op);
 int stats_do(struct stats *stats,
