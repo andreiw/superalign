@@ -190,11 +190,11 @@ int main(int argc, char **argv)
 	bool erase = false;
 	bool random = false;
 	bool do_read = false;
-	bool no_direct = false;
+	unsigned dev_flags = 0;
 
 	while (1) {
 		int c;
-		c = getopt(argc, argv, "s:o:a:c:r:veRdf");
+		c = getopt(argc, argv, "s:o:a:c:r:veRdfb");
 		if (c == -1)
 			break;
 
@@ -257,18 +257,21 @@ int main(int argc, char **argv)
 			do_read = true;
 			break;
 		case 'f':
-			no_direct = true;
+			dev_flags |= DEV_NO_DIRECT;
+			break;
+		case 'b':
+			dev_flags |= DEV_NO_SYNC;
 			break;
 		};
 	}
 
 	if (!size || optind != (argc - 1)) {
-		printf("%s -s size [-f] [-n] [-o offset] [-a align] [-c count] [-r repeats] dev\n",
+		printf("%s -s size [-f] [-d] [-e] [-R] [-o offset] [-a align] [-c count] [-r repeats] dev\n",
 			argv[0]);
 		return -1;
 	};
 
-	returnif(setup_dev(&dev, argv[optind], no_direct));
+	returnif(setup_dev(&dev, argv[optind], dev_flags));
 	signal(SIGINT, &on_sigint);
 	siginterrupt(SIGINT, true);
 
@@ -299,8 +302,10 @@ int main(int argc, char **argv)
 		printf("\tdevice size = %ju\n", dev.size);
 		if (random)
 			printf("\tLFSR-random accesses\n");
-		if (no_direct)
+		if (dev_flags & DEV_NO_DIRECT)
 			printf("\tnon-O_DIRECT I/O\n");
+		if (dev_flags & DEV_NO_SYNC)
+			printf("\tnon-O_SYNC I/O\n");
 	}
 
 	if (!repeat)

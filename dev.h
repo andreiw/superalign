@@ -36,7 +36,10 @@ enum writebuf {
 	WBUF_RAND,
 };
 
-extern int setup_dev(struct device *dev, const char *filename, bool no_direct);
+#define DEV_NO_SYNC   (1 << 0)
+#define DEV_NO_DIRECT (1 << 1)
+
+extern int setup_dev(struct device *dev, const char *filename, unsigned flags);
 
 long long time_write(struct device *dev, off64_t pos, size_t size, enum writebuf which);
 

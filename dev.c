@@ -150,13 +150,15 @@ static void set_rtprio(void)
 
 int setup_dev(struct device *dev,
 	      const char *filename,
-	      bool no_direct)
+	      unsigned dev_flags)
 {
 	int err;
 	void *p;
-	int flags = O_RDWR | O_SYNC | O_NOATIME;
-	if (!no_direct)
-		flags= O_DIRECT;
+	int flags = O_RDWR | O_NOATIME;
+	if (!(dev_flags & DEV_NO_DIRECT))
+		flags |= O_DIRECT;
+	if (!(dev_flags & DEV_NO_SYNC))
+		flags |= O_SYNC;
 
 	set_rtprio();
 

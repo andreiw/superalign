@@ -126,6 +126,8 @@ void stats_print(struct stats *stats)
 
 	if (stats->gindex) {
 		printf("Global stats:\n");
+		if (stats->verbose)
+			printf("\tProcessed: %ju\n", stats->gindex);
 		printf("\tMin %s latency: ", stats->op);
 		print_ns(stats->min, "s\n");
 		printf("\tMax %s latency: ", stats->op);
