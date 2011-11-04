@@ -1,4 +1,4 @@
-CC	:= gcc
+CC	:= $(CROSS_COMPILE)gcc
 CFLAGS	:= -O2 -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter -g2
 LDFLAGS := -lrt -lm
 
