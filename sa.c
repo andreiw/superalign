@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!size || optind != (argc - 1)) {
-		printf("%s -s size [-f] [-d] [-e] [-R] [-o offset] [-a align] [-c count] [-r repeats] dev\n",
+		printf("%s -s size [-b] [-f] [-d] [-e] [-R] [-o offset] [-a align] [-c count] [-r repeats] dev\n",
 			argv[0]);
 		return -1;
 	};
